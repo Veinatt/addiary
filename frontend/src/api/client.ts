@@ -71,12 +71,23 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   }
 
   const text = await response.text()
-  const data = text ? (JSON.parse(text) as T & { success?: boolean; error?: string }) : ({} as T)
+  let data = {} as T & { success?: boolean; error?: string }
+  if (text) {
+    try {
+      data = JSON.parse(text) as T & { success?: boolean; error?: string }
+    } catch {
+      const looksLikeHtml = /^\s*</.test(text) || text.startsWith('The page')
+      throw new ApiError(
+        looksLikeHtml
+          ? `API недоступен (${response.status}). В Vercel укажите VITE_API_URL на Railway (не на Vercel) и сделайте Redeploy.`
+          : `Ответ сервера не JSON (${response.status})`,
+        response.status,
+      )
+    }
+  }
   if (!response.ok) {
     const message =
-      data && typeof data === 'object' && 'error' in data && typeof data.error === 'string'
-        ? data.error
-        : 'Ошибка сервера'
+      data && typeof data === 'object' && typeof data.error === 'string' ? data.error : 'Ошибка сервера'
     throw new ApiError(message, response.status)
   }
   return data

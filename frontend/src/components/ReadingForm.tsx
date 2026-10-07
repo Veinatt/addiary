@@ -51,7 +51,7 @@ export function ReadingForm({ initial, submitLabel, framed = true, onSubmit }: P
       return
     }
     if (!clock) {
-      setError('Укажите время как ЧЧ:ММ, например 08:45')
+      setError('Укажите время')
       return
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -107,15 +107,20 @@ export function ReadingForm({ initial, submitLabel, framed = true, onSubmit }: P
           <span className="text-center text-muted-foreground">Время</span>
           <input
             className="field text-center tabular-nums"
-            type="text"
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="08:45"
+            type="time"
+            lang="ru"
+            step={60}
             value={time}
             onChange={(event) => setTime(event.target.value)}
-            onBlur={() => {
-              const clock = normalizeTime(time)
-              if (clock) setTime(clock)
+            onClick={(event) => {
+              const input = event.currentTarget
+              if (typeof input.showPicker === 'function') {
+                try {
+                  input.showPicker()
+                } catch {
+                  /* ignore — not all WebViews allow it */
+                }
+              }
             }}
             required
           />
