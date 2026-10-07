@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+dist-ssr/
+build/
+*.tsbuildinfo
+
+# Env and secrets (keep *.example)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Local SQLite and runtime data
+data/
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# Logs and caches
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.cache/
+.vite/
+.turbo/
+coverage/
+tmp/
+temp/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Misc local artifacts
+*.local
+.vercel
+.railway

@@ -1,0 +1,39 @@
+{
+  "name": "dnevnik-backend",
+  "version": "1.0.0",
+  "description": "Дневник давления — HTTP API (Express + SQLite)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "nodemon"
+  },
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "cors": "^2.8.6",
+    "date-fns": "^4.4.0",
+    "date-fns-tz": "^3.2.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pdfkit": "^0.17.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.3",
+    "@types/pdfkit": "^0.17.3",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.23.5",
+    "typescript": "~5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "esbuild@0.28.1": true
+  }
+}
