@@ -77,9 +77,15 @@ export function buildDiaryPdf(options: {
 
     const bottom = () => doc.page.height - doc.page.margins.bottom - 32
 
+    const col = (index: number): Column => {
+      const column = columns[index]
+      if (!column) throw new Error(`PDF column ${index} is missing`)
+      return column
+    }
+
     const columnX = (index: number): number => {
       let x = left
-      for (let i = 0; i < index; i += 1) x += columns[i].width
+      for (let i = 0; i < index; i += 1) x += col(i).width
       return x
     }
 
@@ -105,7 +111,7 @@ export function buildDiaryPdf(options: {
       strokeLine(left, fromY, left, toY, { opacity: 0.55, width: 0.9 })
       let x = left
       for (let i = 0; i < columns.length; i += 1) {
-        x += columns[i].width
+        x += col(i).width
         const isOuter = i === columns.length - 1
         strokeLine(x, fromY, x, toY, { opacity: isOuter ? 0.55 : 0.28, width: isOuter ? 0.9 : 0.7 })
       }
@@ -209,12 +215,12 @@ export function buildDiaryPdf(options: {
       const pulsePressure = String(reading.systolic - reading.diastolic)
       const arrhythmia = reading.arrhythmia ? 'да' : ''
 
-      drawCellText(shortDateFromIso(reading.measuredAt), columnX(0), textY, columns[0].width - CELL_PAD_X * 2, COLORS.text)
-      drawCellText(timeLabelFromIso(reading.measuredAt), columnX(1), textY, columns[1].width - CELL_PAD_X * 2, COLORS.text)
+      drawCellText(shortDateFromIso(reading.measuredAt), columnX(0), textY, col(0).width - CELL_PAD_X * 2, COLORS.text)
+      drawCellText(timeLabelFromIso(reading.measuredAt), columnX(1), textY, col(1).width - CELL_PAD_X * 2, COLORS.text)
 
       {
         const x = columnX(2)
-        const cellW = columns[2].width - CELL_PAD_X * 2
+        const cellW = col(2).width - CELL_PAD_X * 2
         const sysColor = zoneColor(zoneFor(reading.systolic, bounds.sysMin, bounds.sysMax))
         const diaColor = zoneColor(zoneFor(reading.diastolic, bounds.diaMin, bounds.diaMax))
         doc.save()
@@ -232,15 +238,15 @@ export function buildDiaryPdf(options: {
         doc.restore()
       }
 
-      drawCellText(pulsePressure, columnX(3), textY, columns[3].width - CELL_PAD_X * 2, COLORS.text)
+      drawCellText(pulsePressure, columnX(3), textY, col(3).width - CELL_PAD_X * 2, COLORS.text)
       drawCellText(
         pulse,
         columnX(4),
         textY,
-        columns[4].width - CELL_PAD_X * 2,
+        col(4).width - CELL_PAD_X * 2,
         zoneColor(zoneFor(reading.pulse, bounds.pulseMin, bounds.pulseMax)),
       )
-      drawCellText(arrhythmia, columnX(5), textY, columns[5].width - CELL_PAD_X * 2, COLORS.text)
+      drawCellText(arrhythmia, columnX(5), textY, col(5).width - CELL_PAD_X * 2, COLORS.text)
 
       if (note) {
         doc.save()
