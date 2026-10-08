@@ -2,7 +2,7 @@ import type { Request, Response } from 'express'
 import { Router } from 'express'
 import { config } from '../config'
 import { createDownloadTicket, getDownloadTicket } from '../db/downloadTicketsRepo'
-import { listReadingsBetween } from '../db/readingsRepo'
+import { listReadings, listReadingsBetween } from '../db/readingsRepo'
 import { getOrCreateSettings } from '../db/settingsRepo'
 import { telegramAuth } from '../middleware/telegramAuth'
 import { buildDiaryPdf } from '../services/pdfDiary'
@@ -43,6 +43,10 @@ function parsePeriod(body: { from?: unknown; to?: unknown }): { from: string; to
 
 async function buildPdfForUser(userId: number, from: string, to: string): Promise<{ pdf: Buffer; fileName: string }> {
   const readings = listReadingsBetween(userId, from, to)
+  const total = listReadings(userId).length
+  console.log(
+    `[api:download] build userId=${userId} from=${from} to=${to} matched=${readings.length} total=${total}`,
+  )
   const bounds = getOrCreateSettings(userId)
   const pdf = await buildDiaryPdf({ readings, bounds, from, to })
   return { pdf, fileName: `dnevnik-${from}_${to}.pdf` }

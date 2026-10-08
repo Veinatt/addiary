@@ -43,14 +43,14 @@ export function listReadings(userId: number): Reading[] {
 }
 
 export function listReadingsBetween(userId: number, from: string, to: string): Reading[] {
-  const rows = getDb()
-    .prepare(
-      `SELECT * FROM readings
-       WHERE userId = ? AND date >= ? AND date <= ?
-       ORDER BY measuredAt ASC`,
-    )
-    .all(userId, from, to) as ReadingRow[]
-  return rows.map(toReading)
+  // Filter by Minsk day of measuredAt (same as UI date/time columns), not only the
+  // stored `date` column — that can lag after restores or older writes.
+  return listReadings(userId)
+    .filter((reading) => {
+      const key = dateKeyFromIso(reading.measuredAt)
+      return key >= from && key <= to
+    })
+    .sort((a, b) => a.measuredAt.localeCompare(b.measuredAt))
 }
 
 function getRow(id: string): ReadingRow | undefined {

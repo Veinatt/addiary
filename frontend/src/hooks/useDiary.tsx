@@ -39,6 +39,7 @@ type DiaryValue = {
   readings: Reading[]
   bounds: Bounds
   status: SyncStatus
+  refresh: () => Promise<void>
   saveReading: (draft: ReadingDraft) => Promise<void>
   deleteReading: (id: string) => Promise<void>
   saveBounds: (bounds: Bounds) => Promise<void>
@@ -87,21 +88,28 @@ async function pull(): Promise<void> {
     pending.filter((item) => item.kind === 'delete-reading').map((item) => item.entityId),
   )
 
-  // After a Railway redeploy without a Volume the server DB is empty. Re-seed from the
+  // After a Railway redeploy / empty Volume the server DB is empty. Re-seed from the
   // device cache instead of wiping local readings on the next sync.
   if (listed.readings.length === 0) {
     const localAll = await db.readings.toArray()
     const toRestore = localAll.filter((row) => !deleteIds.has(row.id))
     if (toRestore.length > 0) {
+      let uploaded = 0
       for (const row of toRestore) {
         try {
           await upsertReading({ ...row, note: cleanNote(row.note) })
           await clearPending('upsert-reading', row.id)
-        } catch (error) {
-          if (isOffline(error)) await replacePending('upsert-reading', row.id)
+          uploaded += 1
+        } catch {
+          await replacePending('upsert-reading', row.id)
         }
       }
       listed = await listReadings()
+      if (listed.readings.length === 0) {
+        // Do not clear the device cache while the server is still empty.
+        console.warn(`[diary] server empty after restore attempt (uploaded=${uploaded}); keeping local`)
+        return
+      }
     }
   }
 
@@ -267,11 +275,12 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       readings: readings ?? [],
       bounds: settingsRow?.bounds ?? DEFAULT_BOUNDS,
       status,
+      refresh,
       saveReading,
       deleteReading,
       saveBounds,
     }),
-    [readings, settingsRow, status, saveReading, deleteReading, saveBounds],
+    [readings, settingsRow, status, refresh, saveReading, deleteReading, saveBounds],
   )
 
   return <DiaryContext.Provider value={value}>{children}</DiaryContext.Provider>

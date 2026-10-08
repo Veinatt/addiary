@@ -16,7 +16,7 @@ function tone(zone: 'low' | 'high' | 'normal'): string {
 }
 
 export function TablesPage() {
-  const { readings, bounds } = useDiary()
+  const { readings, bounds, refresh } = useDiary()
   const [period, setPeriod] = useState<PeriodValue>(() => initialPeriod())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +59,8 @@ export function TablesPage() {
     setError(null)
     setSentHint(null)
     try {
+      // Push local cache to the server first — empty Volume DB otherwise yields an empty PDF.
+      await refresh()
       const result = await downloadPdf(range.from, range.to)
       if (result.via === 'telegram') {
         setSentHint('PDF отправлен в чат с ботом — откройте там.')
