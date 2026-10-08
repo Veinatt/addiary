@@ -218,44 +218,59 @@ export function TablesPage() {
                   </td>
                 </tr>
               ) : (
-                dayRows.map((row) => (
-                  <tr key={row.date} className="border-b border-border/70 last:border-0">
-                    <td className="border-r border-border/35 px-2 py-2 text-center tabular-nums">
-                      {`${row.date.slice(8, 10)}.${row.date.slice(5, 7)}`}
-                    </td>
-                    <td className="border-r border-border/35 px-2 py-2 text-center">
-                      <PressureCell reading={row.morning} bounds={bounds} />
-                    </td>
-                    <td className="border-r border-border/35 px-2 py-2 text-center tabular-nums">
-                      {row.morning ? row.morning.systolic - row.morning.diastolic : '—'}
-                    </td>
-                    <td
-                      className={cn(
-                        'border-r border-border/35 px-2 py-2 text-center tabular-nums',
-                        row.morning && tone(zoneFor(row.morning.pulse, bounds.pulseMin, bounds.pulseMax)),
-                      )}
-                    >
-                      {row.morning ? row.morning.pulse : '—'}
-                    </td>
-                    <td className="border-r border-border/35 px-2 py-2 text-center">
-                      <PressureCell reading={row.evening} bounds={bounds} />
-                    </td>
-                    <td className="border-r border-border/35 px-2 py-2 text-center tabular-nums">
-                      {row.evening ? row.evening.systolic - row.evening.diastolic : '—'}
-                    </td>
-                    <td
-                      className={cn(
-                        'border-r border-border/35 px-2 py-2 text-center tabular-nums',
-                        row.evening && tone(zoneFor(row.evening.pulse, bounds.pulseMin, bounds.pulseMax)),
-                      )}
-                    >
-                      {row.evening ? row.evening.pulse : '—'}
-                    </td>
-                    <td className="max-w-[14rem] whitespace-pre-wrap break-words px-2 py-2 text-left text-muted-foreground">
-                      {row.note || ''}
-                    </td>
-                  </tr>
-                ))
+                dayRows.map((row, index) => {
+                  const rowEdge = cn(
+                    'border-r border-border/35 px-2 py-2',
+                    index < dayRows.length - 1 && 'border-b border-border/70',
+                  )
+                  return (
+                    <tr key={row.date}>
+                      <td className={cn(rowEdge, 'text-center tabular-nums')}>
+                        {`${row.date.slice(8, 10)}.${row.date.slice(5, 7)}`}
+                      </td>
+                      <td className={cn(rowEdge, 'text-center')}>
+                        <PressureCell reading={row.morning} bounds={bounds} />
+                      </td>
+                      <td className={cn(rowEdge, 'text-center tabular-nums')}>
+                        {row.morning ? row.morning.systolic - row.morning.diastolic : '—'}
+                      </td>
+                      <td
+                        className={cn(
+                          rowEdge,
+                          'text-center tabular-nums',
+                          row.morning &&
+                            tone(zoneFor(row.morning.pulse, bounds.pulseMin, bounds.pulseMax)),
+                        )}
+                      >
+                        {row.morning ? row.morning.pulse : '—'}
+                      </td>
+                      <td className={cn(rowEdge, 'text-center')}>
+                        <PressureCell reading={row.evening} bounds={bounds} />
+                      </td>
+                      <td className={cn(rowEdge, 'text-center tabular-nums')}>
+                        {row.evening ? row.evening.systolic - row.evening.diastolic : '—'}
+                      </td>
+                      <td
+                        className={cn(
+                          rowEdge,
+                          'text-center tabular-nums',
+                          row.evening &&
+                            tone(zoneFor(row.evening.pulse, bounds.pulseMin, bounds.pulseMax)),
+                        )}
+                      >
+                        {row.evening ? row.evening.pulse : '—'}
+                      </td>
+                      <td
+                        className={cn(
+                          'max-w-[14rem] whitespace-pre-wrap break-words px-2 py-2 text-left text-muted-foreground',
+                          index < dayRows.length - 1 && 'border-b border-border/70',
+                        )}
+                      >
+                        {row.note || ''}
+                      </td>
+                    </tr>
+                  )
+                })
               )}
             </tbody>
           </table>

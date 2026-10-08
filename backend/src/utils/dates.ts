@@ -35,3 +35,19 @@ export function periodLabel(from: string, to: string): string {
   }
   return `${format(start, 'd MMMM yyyy', { locale: ru })} — ${format(end, 'd MMMM yyyy', { locale: ru })}`
 }
+
+/** Display date for filenames: 08.10.2026 */
+export function formatDayDot(dayKey: string): string {
+  return format(parseISO(dayKey), 'dd.MM.yyyy')
+}
+
+/** PDF attachment name: one day → dnevnik-08.10.2026.pdf; range → dnevnik-01.10.2026-31.10.2026.pdf */
+export function diaryPdfFileName(from: string, to: string): string {
+  if (from === to) return `dnevnik-${formatDayDot(from)}.pdf`
+  return `dnevnik-${formatDayDot(from)}-${formatDayDot(to)}.pdf`
+}
+
+export function diaryPdfCaption(from: string, to: string): string {
+  if (from === to) return `Дневник ${formatDayDot(from)}`
+  return `Дневник ${formatDayDot(from)} — ${formatDayDot(to)}`
+}

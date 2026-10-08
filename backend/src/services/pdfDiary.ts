@@ -152,6 +152,8 @@ export function buildDiaryPdf(options: {
     const label = periodLabel(from, to)
     const dayRows: DayRow[] = groupReadingsByDay(readings, bounds)
     let pageNo = 1
+    /** Y where АД/ПД/Пульс verticals may start (below merged Утро/Вечер titles). */
+    let headerInnerY = 0
     let tableTop = 0
 
     const bottom = () => doc.page.height - doc.page.margins.bottom - 32
@@ -283,11 +285,12 @@ export function buildDiaryPdf(options: {
       doc.y = prevY
 
       tableTop = y
+      headerInnerY = bandY
       strokeLine(left, y, left + width, y, { opacity: 0.7, width: 1 })
       strokeLine(left, y + HEAD_H, left + width, y + HEAD_H, { opacity: 0.7, width: 1 })
       // Horizontal under merged titles only — no verticals through «Утро»/«Вечер».
       strokeLine(morningX, bandY, eveningX + eveningW, bandY, { opacity: 0.35, width: 0.6 })
-      drawVerticals(y, y + HEAD_H, { innerFromY: bandY })
+      drawVerticals(y, y + HEAD_H, { innerFromY: headerInnerY })
       return y + HEAD_H
     }
 
@@ -310,7 +313,7 @@ export function buildDiaryPdf(options: {
       let rowHeight = Math.max(MIN_ROW_H, noteHeight + CELL_PAD_Y * 2)
 
       if (y + rowHeight > bottom()) {
-        drawVerticals(tableTop, y)
+        drawVerticals(tableTop, y, { innerFromY: headerInnerY })
         strokeLine(left, y, left + width, y, { opacity: 0.7, width: 1 })
         doc.addPage()
         pageNo += 1
@@ -383,7 +386,7 @@ export function buildDiaryPdf(options: {
       y += rowHeight
     })
 
-    drawVerticals(tableTop, y)
+    drawVerticals(tableTop, y, { innerFromY: headerInnerY })
     strokeLine(left, tableTop, left + width, tableTop, { opacity: 0.7, width: 1 })
 
     doc.end()

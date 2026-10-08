@@ -7,7 +7,7 @@ import { getOrCreateSettings } from '../db/settingsRepo'
 import { telegramAuth } from '../middleware/telegramAuth'
 import { buildDiaryPdf } from '../services/pdfDiary'
 import { sendDocumentToUser } from '../services/telegramSend'
-import { assertDayKey } from '../utils/dates'
+import { assertDayKey, diaryPdfCaption, diaryPdfFileName } from '../utils/dates'
 
 export const downloadRouter = Router()
 
@@ -49,7 +49,7 @@ async function buildPdfForUser(userId: number, from: string, to: string): Promis
   )
   const bounds = getOrCreateSettings(userId)
   const pdf = await buildDiaryPdf({ readings, bounds, from, to })
-  return { pdf, fileName: `dnevnik-${from}_${to}.pdf` }
+  return { pdf, fileName: diaryPdfFileName(from, to) }
 }
 
 /** Reliable path for Mini Apps: PDF arrives in the bot chat (Open works). */
@@ -70,7 +70,7 @@ downloadRouter.post('/send', telegramAuth, async (req, res) => {
       userId,
       fileName,
       bytes: pdf,
-      caption: `Дневник ${period.from} — ${period.to}`,
+      caption: diaryPdfCaption(period.from, period.to),
     })
     console.log(`[api:download] sent userId=${userId} file=${fileName} bytes=${pdf.length}`)
     res.json({ success: true, via: 'telegram', fileName })
@@ -93,7 +93,7 @@ downloadRouter.post('/token', telegramAuth, (req, res) => {
     return
   }
 
-  const fileName = `dnevnik-${period.from}_${period.to}.pdf`
+  const fileName = diaryPdfFileName(period.from, period.to)
   const ticket = createDownloadTicket({
     userId,
     fromDay: period.from,
