@@ -28,5 +28,15 @@ export function runMigrations(db: Database.Database): void {
       pulseMax INTEGER NOT NULL,
       updatedAt TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS download_tickets (
+      id TEXT PRIMARY KEY,
+      userId INTEGER NOT NULL,
+      fromDay TEXT NOT NULL,
+      toDay TEXT NOT NULL,
+      fileName TEXT NOT NULL,
+      exp INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_download_tickets_exp ON download_tickets(exp);
   `)
 }

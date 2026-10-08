@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express'
 import { Router } from 'express'
 import { config } from '../config'
+import { createDownloadTicket, getDownloadTicket } from '../db/downloadTicketsRepo'
 import { listReadingsBetween } from '../db/readingsRepo'
 import { getOrCreateSettings } from '../db/settingsRepo'
 import { telegramAuth } from '../middleware/telegramAuth'
 import { buildDiaryPdf } from '../services/pdfDiary'
 import { assertDayKey } from '../utils/dates'
-import { createDownloadToken, verifyDownloadToken } from '../utils/downloadToken'
 
 export const downloadRouter = Router()
 
@@ -18,10 +18,14 @@ function publicApiBase(req: Request): string {
 }
 
 function setPdfHeaders(res: Response, fileName: string, byteLength: number): void {
+  // Telegram downloadFile: Content-Disposition must match file_name; ACAO for web.telegram.org
+  const disposition = `attachment; filename="${fileName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`
   res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+  res.setHeader('Content-Disposition', disposition)
   res.setHeader('Content-Length', String(byteLength))
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length')
+  res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')
+  res.setHeader('Vary', 'Origin')
   res.setHeader('Cache-Control', 'no-store')
 }
 
@@ -45,30 +49,48 @@ downloadRouter.post('/token', telegramAuth, (req, res) => {
     res.status(400).json({ success: false, error: 'Начало периода позже конца' })
     return
   }
-  const token = createDownloadToken({ userId, from, to })
+
   const fileName = `dnevnik-${from}_${to}.pdf`
-  // Query string (same as NasTask) — path tokens with `.` often break Telegram downloadFile.
-  const url = `${publicApiBase(req)}/api/download/file?token=${encodeURIComponent(token)}`
+  const ticket = createDownloadTicket({ userId, fromDay: from, toDay: to, fileName })
+  // Short opaque id — long HMAC tokens in the URL often fail inside Telegram downloadFile.
+  const url = `${publicApiBase(req)}/api/download/file?id=${encodeURIComponent(ticket.id)}`
+  console.log(`[api:download] ticket userId=${userId} file=${fileName} id=${ticket.id}`)
   res.json({ success: true, url, fileName })
+})
+
+downloadRouter.options('/file', (_req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.status(204).end()
 })
 
 downloadRouter.get('/file', async (req: Request, res: Response) => {
   try {
-    const raw = req.query.token
-    const token = typeof raw === 'string' ? raw : ''
-    const payload = verifyDownloadToken(token)
-    if (!payload) {
-      res.status(401).json({ success: false, error: 'Ссылка устарела' })
+    const raw = req.query.id
+    const id = typeof raw === 'string' ? raw.trim() : ''
+    const ticket = id ? getDownloadTicket(id) : null
+    if (!ticket) {
+      console.warn(`[api:download] missing/expired ticket id=${id || '(empty)'}`)
+      res.status(401).type('text/plain').send('Download link expired')
       return
     }
-    const readings = listReadingsBetween(payload.userId, payload.from, payload.to)
-    const bounds = getOrCreateSettings(payload.userId)
-    const pdf = await buildDiaryPdf({ readings, bounds, from: payload.from, to: payload.to })
-    const fileName = `dnevnik-${payload.from}_${payload.to}.pdf`
-    setPdfHeaders(res, fileName, pdf.length)
+
+    const readings = listReadingsBetween(ticket.userId, ticket.fromDay, ticket.toDay)
+    const bounds = getOrCreateSettings(ticket.userId)
+    const pdf = await buildDiaryPdf({
+      readings,
+      bounds,
+      from: ticket.fromDay,
+      to: ticket.toDay,
+    })
+    console.log(
+      `[api:download] file userId=${ticket.userId} file=${ticket.fileName} bytes=${pdf.length}`,
+    )
+    setPdfHeaders(res, ticket.fileName, pdf.length)
     res.end(pdf)
   } catch (error) {
     console.error('[api:download] file failed', error)
-    res.status(500).json({ success: false, error: 'Internal server error' })
+    res.status(500).type('text/plain').send('Internal server error')
   }
 })

@@ -12,8 +12,18 @@ async function main(): Promise<void> {
   initDb()
 
   const app = express()
-  app.use(cors({ origin: '*' }))
+  app.use(
+    cors({
+      origin: true,
+      exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type'],
+    }),
+  )
   app.use(express.json({ limit: '1mb' }))
+  if (!config.publicApiUrl) {
+    console.warn(
+      '[boot] PUBLIC_API_URL is empty — download links use the request Host. Set PUBLIC_API_URL to the Railway HTTPS URL for Telegram downloadFile.',
+    )
+  }
 
   app.get('/health', (_req, res) => {
     res.json({ ok: true, port: config.port })
