@@ -1,3 +1,5 @@
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { cleanNote, type Reading } from '@/domain'
 import { splitMinsk } from '@/lib/dates'
@@ -9,9 +11,22 @@ type Props = {
   onClose: () => void
 }
 
+function useBodyScrollLock(locked: boolean) {
+  useEffect(() => {
+    if (!locked) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previous
+    }
+  }, [locked])
+}
+
 export function ReadingDialog({ reading, onClose }: Props) {
   const { saveReading } = useDiary()
-  if (!reading) return null
+  useBodyScrollLock(reading != null)
+  if (!reading || typeof document === 'undefined') return null
+
   const when = splitMinsk(reading.measuredAt)
   const initial = {
     date: when.date,
@@ -23,11 +38,24 @@ export function ReadingDialog({ reading, onClose }: Props) {
     note: cleanNote(reading.note),
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center">
-      <div className="surface-panel max-h-[90dvh] w-full max-w-md overflow-auto">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-          <h2 className="text-base font-semibold">Запись</h2>
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-3">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        aria-label="Закрыть"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="reading-dialog-title"
+        className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border/70 bg-card shadow-lg"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <h2 id="reading-dialog-title" className="text-base font-semibold">
+            Запись
+          </h2>
           <button
             type="button"
             className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
@@ -37,18 +65,21 @@ export function ReadingDialog({ reading, onClose }: Props) {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <ReadingForm
-          key={reading.id}
-          framed={false}
-          initial={initial}
-          submitLabel="Сохранить"
-          onSubmit={async (draft: Omit<ReadingDraft, 'id'>) => {
-            await saveReading({ ...draft, id: reading.id })
-            onClose()
-          }}
-        />
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <ReadingForm
+            key={reading.id}
+            framed={false}
+            initial={initial}
+            submitLabel="Сохранить"
+            onSubmit={async (draft: Omit<ReadingDraft, 'id'>) => {
+              await saveReading({ ...draft, id: reading.id })
+              onClose()
+            }}
+          />
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -59,10 +90,22 @@ type ConfirmProps = {
 }
 
 export function ConfirmDelete({ open, onConfirm, onClose }: ConfirmProps) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="surface-panel w-full max-w-sm p-5">
+  useBodyScrollLock(open)
+  if (!open || typeof document === 'undefined') return null
+
+  return createPortal(
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/45"
+        aria-label="Закрыть"
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative z-10 w-full max-w-sm rounded-2xl border border-border/70 bg-card p-5 shadow-lg"
+      >
         <h2 className="text-base font-semibold">Удалить запись?</h2>
         <p className="mt-2 text-sm text-muted-foreground">Её нельзя будет вернуть.</p>
         <div className="mt-4 grid grid-cols-2 gap-2">
@@ -78,6 +121,7 @@ export function ConfirmDelete({ open, onConfirm, onClose }: ConfirmProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

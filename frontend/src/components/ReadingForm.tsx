@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { parseWhole, validateReadingValues } from '@/domain'
+import { SegmentedControl } from '@/components/SegmentedControl'
 import { minskNow } from '@/lib/dates'
 import type { ReadingDraft } from '@/hooks/useDiary'
+
+const ARRHYTHMIA_OPTIONS = [
+  { value: 'no', label: 'Нет' },
+  { value: 'yes', label: 'Да' },
+] as const
 
 type Initial = {
   date: string
@@ -32,7 +38,7 @@ function normalizeTime(raw: string): string | null {
 export function ReadingForm({ initial, submitLabel, framed = true, onSubmit }: Props) {
   const now = minskNow()
   const [date, setDate] = useState(initial?.date ?? now.date)
-  const [time, setTime] = useState(initial?.time ?? now.time)
+  const [time, setTime] = useState(() => normalizeTime(initial?.time ?? now.time) ?? now.time)
   const [systolic, setSystolic] = useState(initial?.systolic ?? '')
   const [diastolic, setDiastolic] = useState(initial?.diastolic ?? '')
   const [pulse, setPulse] = useState(initial?.pulse ?? '')
@@ -91,106 +97,78 @@ export function ReadingForm({ initial, submitLabel, framed = true, onSubmit }: P
         void submit()
       }}
     >
-      <div className="grid grid-cols-2 gap-3">
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-center text-muted-foreground">Дата</span>
-          <input
-            className="field text-center"
-            type="date"
-            lang="ru"
-            value={date}
-            onChange={(event) => setDate(event.target.value)}
-            required
-          />
-        </label>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-center text-muted-foreground">Время</span>
-          <input
-            className="field text-center tabular-nums"
-            type="time"
-            lang="ru"
-            step={60}
-            value={time}
-            onChange={(event) => setTime(event.target.value)}
-            onClick={(event) => {
-              const input = event.currentTarget
-              if (typeof input.showPicker === 'function') {
-                try {
-                  input.showPicker()
-                } catch {
-                  /* ignore — not all WebViews allow it */
-                }
-              }
-            }}
-            required
-          />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-muted-foreground">Верхнее</span>
-          <input
-            className="field text-center text-3xl font-semibold tabular-nums"
-            inputMode="numeric"
-            value={systolic}
-            onChange={(event) => setSystolic(event.target.value)}
-            placeholder="120"
-            aria-label="Верхнее давление"
-          />
-        </label>
-        <span className="px-1 pb-3 text-2xl text-muted-foreground">/</span>
-        <label className="grid gap-1.5 text-sm">
-          <span className="text-muted-foreground">Нижнее</span>
-          <input
-            className="field text-center text-3xl font-semibold tabular-nums"
-            inputMode="numeric"
-            value={diastolic}
-            onChange={(event) => setDiastolic(event.target.value)}
-            placeholder="80"
-            aria-label="Нижнее давление"
-          />
-        </label>
-      </div>
-
-      <label className="grid gap-1.5 text-sm">
-        <span className="text-muted-foreground">Пульс</span>
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-1.5">
+        <span className="text-center text-sm text-muted-foreground">Дата</span>
+        <span aria-hidden className="w-4" />
+        <span className="text-center text-sm text-muted-foreground">Время</span>
         <input
-          className="field tabular-nums"
+          className="field field-date w-full text-center"
+          type="date"
+          lang="ru"
+          value={date}
+          onChange={(event) => setDate(event.target.value)}
+          required
+        />
+        <span aria-hidden className="w-4" />
+        <input
+          className="field field-time w-full text-center tabular-nums"
+          type="time"
+          value={time}
+          onChange={(event) => {
+            const next = normalizeTime(event.target.value)
+            if (next) setTime(next)
+          }}
+          required
+        />
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-1.5">
+        <span className="text-center text-sm text-muted-foreground">Верхнее</span>
+        <span aria-hidden className="w-4" />
+        <span className="text-center text-sm text-muted-foreground">Нижнее</span>
+        <input
+          className="field w-full text-center text-3xl font-semibold tabular-nums"
+          inputMode="numeric"
+          value={systolic}
+          onChange={(event) => setSystolic(event.target.value)}
+          placeholder="120"
+          aria-label="Верхнее давление"
+        />
+        <span className="flex w-4 items-center justify-center text-2xl leading-none text-muted-foreground">/</span>
+        <input
+          className="field w-full text-center text-3xl font-semibold tabular-nums"
+          inputMode="numeric"
+          value={diastolic}
+          onChange={(event) => setDiastolic(event.target.value)}
+          placeholder="80"
+          aria-label="Нижнее давление"
+        />
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 gap-y-1.5">
+        <span className="text-center text-sm text-muted-foreground">Пульс</span>
+        <span aria-hidden className="w-4" />
+        <span className="text-center text-sm text-muted-foreground">Аритмия</span>
+        <input
+          className="field w-full text-center tabular-nums"
           inputMode="numeric"
           value={pulse}
           onChange={(event) => setPulse(event.target.value)}
           placeholder="72"
+          aria-label="Пульс"
         />
-      </label>
-
-      <button
-        type="button"
-        role="switch"
-        aria-checked={arrhythmia}
-        onClick={() => setArrhythmia((value) => !value)}
-        className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-3 text-left"
-      >
-        <span className="text-sm">Аритмия</span>
-        <span className="inline-flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">{arrhythmia ? 'Да' : 'Нет'}</span>
-          <span
-            className={
-              arrhythmia
-                ? 'relative h-7 w-12 shrink-0 rounded-full bg-primary transition-colors duration-200'
-                : 'relative h-7 w-12 shrink-0 rounded-full bg-muted transition-colors duration-200'
-            }
-          >
-            <span
-              className={
-                arrhythmia
-                  ? 'absolute top-0.5 left-0.5 h-6 w-6 translate-x-5 rounded-full bg-white shadow transition-transform duration-200 ease-[var(--ease-bounce)]'
-                  : 'absolute top-0.5 left-0.5 h-6 w-6 translate-x-0 rounded-full bg-white shadow transition-transform duration-200 ease-[var(--ease-bounce)]'
-              }
-            />
-          </span>
-        </span>
-      </button>
+        <span aria-hidden className="w-4" />
+        <SegmentedControl
+          fullWidth
+          size="sm"
+          toggleWhole
+          variant="field"
+          value={arrhythmia ? 'yes' : 'no'}
+          options={ARRHYTHMIA_OPTIONS}
+          activeTone={arrhythmia ? 'primary' : 'muted'}
+          onChange={(value) => setArrhythmia(value === 'yes')}
+        />
+      </div>
 
       <label className="grid gap-1.5 text-sm">
         <span className="text-muted-foreground">Примечание</span>

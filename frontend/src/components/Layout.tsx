@@ -55,7 +55,7 @@ export function Layout({ tab, settingsOpen, onTab, onToggleSettings, children }:
         </p>
       )}
 
-      <main className="mx-auto w-full min-w-0 max-w-lg flex-1 overflow-x-clip px-4 pb-28 pt-4">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-lg flex-1 px-4 pb-28 pt-4">{children}</main>
 
       <nav
         className="fixed inset-x-0 bottom-0 z-40 border-t border-primary/10 bg-card/95 backdrop-blur-md"
