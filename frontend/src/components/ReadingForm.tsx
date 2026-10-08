@@ -105,6 +105,7 @@ export function ReadingForm({ initial, submitLabel, framed = true, onSubmit }: P
           className="field field-date w-full text-center"
           type="date"
           lang="ru"
+          dir="ltr"
           value={date}
           onChange={(event) => setDate(event.target.value)}
           required
@@ -113,6 +114,9 @@ export function ReadingForm({ initial, submitLabel, framed = true, onSubmit }: P
         <input
           className="field field-time w-full text-center tabular-nums"
           type="time"
+          lang="ru"
+          dir="ltr"
+          step={60}
           value={time}
           onChange={(event) => {
             const next = normalizeTime(event.target.value)
