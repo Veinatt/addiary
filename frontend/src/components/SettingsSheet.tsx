@@ -100,7 +100,7 @@ export function SettingsSheet({ open }: Props) {
             <span className="text-sm text-muted-foreground">{field.label}</span>
             <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
               <input
-                className="field tabular-nums"
+                className="field text-center tabular-nums"
                 inputMode="numeric"
                 value={Number.isFinite(draft[field.min]) ? String(draft[field.min]) : ''}
                 onChange={(event) => update(field.min, event.target.value)}
@@ -108,7 +108,7 @@ export function SettingsSheet({ open }: Props) {
               />
               <span className="text-muted-foreground">—</span>
               <input
-                className="field tabular-nums"
+                className="field text-center tabular-nums"
                 inputMode="numeric"
                 value={Number.isFinite(draft[field.max]) ? String(draft[field.max]) : ''}
                 onChange={(event) => update(field.max, event.target.value)}

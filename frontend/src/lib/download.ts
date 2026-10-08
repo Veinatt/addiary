@@ -10,7 +10,10 @@ type TelegramWebApp = {
     callback?: (accepted: boolean) => void,
   ) => void
   openLink?: (url: string) => void
+  showAlert?: (message: string) => void
 }
+
+export type DownloadPdfResult = { via: 'telegram' | 'browser' }
 
 function telegramWebApp(): TelegramWebApp | null {
   return (
@@ -43,52 +46,32 @@ async function saveBlobDownload(url: string, fileName: string): Promise<void> {
   }
 }
 
-function nativeDownload(url: string, fileName: string): Promise<boolean> {
-  const tg = telegramWebApp()
-  if (!tg?.downloadFile) return Promise.resolve(false)
-  return new Promise((resolve) => {
-    let settled = false
-    const timer = window.setTimeout(() => {
-      if (settled) return
-      settled = true
-      resolve(false)
-    }, 5000)
-    try {
-      tg.downloadFile!({ url, file_name: fileName }, (accepted) => {
-        if (settled) return
-        settled = true
-        window.clearTimeout(timer)
-        resolve(accepted)
-      })
-    } catch {
-      if (!settled) {
-        settled = true
-        window.clearTimeout(timer)
-        resolve(false)
-      }
-    }
-  })
-}
-
-export async function downloadPdf(from: string, to: string): Promise<void> {
+/** In Telegram, send PDF to the bot chat — downloadFile was saving error bodies as TXT. */
+export async function downloadPdf(from: string, to: string): Promise<DownloadPdfResult> {
   const { apiFetch } = await import('@/api/client')
+  const tg = telegramWebApp()
+
+  if (isTelegramMiniApp()) {
+    await apiFetch<{ via: string; fileName: string }>('/api/download/send', {
+      method: 'POST',
+      body: JSON.stringify({ from, to }),
+    })
+    tg?.showAlert?.('PDF отправлен в чат с ботом')
+    return { via: 'telegram' }
+  }
+
   const result = await apiFetch<{ url: string; fileName: string }>('/api/download/token', {
     method: 'POST',
     body: JSON.stringify({ from, to }),
   })
   if (!result.url || !result.fileName) throw new ApiError('Не удалось получить ссылку', 500)
   const url = result.url.startsWith('http') ? result.url : `${API_BASE_URL}${result.url}`
-  const tg = telegramWebApp()
-  if (isTelegramMiniApp() && url.startsWith('https://') && tg?.downloadFile) {
-    const accepted = await nativeDownload(url, result.fileName)
-    if (accepted) return
-  }
   try {
     await saveBlobDownload(url, result.fileName)
   } catch {
-    if (tg?.openLink) tg.openLink(url)
-    else window.open(url, '_blank', 'noopener,noreferrer')
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
+  return { via: 'browser' }
 }
 
 export function useTelegramChrome(): void {

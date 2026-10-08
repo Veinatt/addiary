@@ -20,6 +20,7 @@ export function TablesPage() {
   const [period, setPeriod] = useState<PeriodValue>(() => initialPeriod())
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sentHint, setSentHint] = useState<string | null>(null)
 
   const range = useMemo(() => resolveRange(period, readings), [period, readings])
   const rows = useMemo(
@@ -56,8 +57,12 @@ export function TablesPage() {
   const download = async () => {
     setBusy(true)
     setError(null)
+    setSentHint(null)
     try {
-      await downloadPdf(range.from, range.to)
+      const result = await downloadPdf(range.from, range.to)
+      if (result.via === 'telegram') {
+        setSentHint('PDF отправлен в чат с ботом — откройте там.')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось скачать PDF')
     } finally {
@@ -148,6 +153,7 @@ export function TablesPage() {
         Пульсовое давление — разница между верхним и нижним. Пример: 120 / 80, пульсовое 40.
       </p>
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+      {sentHint && <p className="text-sm text-primary-soft">{sentHint}</p>}
       <button type="button" className="btn-primary" disabled={busy} onClick={() => void download()}>
         {busy ? 'Готовлю PDF…' : 'Скачать PDF'}
       </button>

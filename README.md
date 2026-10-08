@@ -41,3 +41,17 @@ API: http://localhost:5001
 - Настройки справа в шапке: тёмная или светлая тема, границы верхнего, нижнего и пульса.
 
 Записи лежат в SQLite и привязаны к Telegram id. Чужие строки не отдаются.
+
+## Railway (чтобы записи не пропадали)
+
+При каждом деплое файловая система контейнера сбрасывается. Нужен Volume:
+
+1. Railway → сервис backend → **Variables**:  
+   `DATABASE_PATH=/data/dnevnik.sqlite`  
+   `PUBLIC_API_URL=https://<ваш-railway-домен>` (без `/` в конце)  
+   `AUTH_DEV_BYPASS=false`  
+   `BOT_TOKEN=...`
+2. **Volumes** → New Volume → mount path **`/data`**.
+3. Redeploy.
+
+Без Volume SQLite живёт в эфемерном диске и обнуляется на каждый rebuild. Клиент после этого подтягивает пустой список с сервера.

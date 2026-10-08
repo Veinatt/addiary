@@ -6,6 +6,7 @@ import { listReadingsBetween } from '../db/readingsRepo'
 import { getOrCreateSettings } from '../db/settingsRepo'
 import { telegramAuth } from '../middleware/telegramAuth'
 import { buildDiaryPdf } from '../services/pdfDiary'
+import { sendDocumentToUser } from '../services/telegramSend'
 import { assertDayKey } from '../utils/dates'
 
 export const downloadRouter = Router()
@@ -29,46 +30,88 @@ function setPdfHeaders(res: Response, fileName: string, byteLength: number): voi
   res.setHeader('Cache-Control', 'no-store')
 }
 
+function parsePeriod(body: { from?: unknown; to?: unknown }): { from: string; to: string } | null {
+  try {
+    const from = assertDayKey(String(body.from ?? ''))
+    const to = assertDayKey(String(body.to ?? ''))
+    if (from > to) return null
+    return { from, to }
+  } catch {
+    return null
+  }
+}
+
+async function buildPdfForUser(userId: number, from: string, to: string): Promise<{ pdf: Buffer; fileName: string }> {
+  const readings = listReadingsBetween(userId, from, to)
+  const bounds = getOrCreateSettings(userId)
+  const pdf = await buildDiaryPdf({ readings, bounds, from, to })
+  return { pdf, fileName: `dnevnik-${from}_${to}.pdf` }
+}
+
+/** Reliable path for Mini Apps: PDF arrives in the bot chat (Open works). */
+downloadRouter.post('/send', telegramAuth, async (req, res) => {
+  const userId = req.telegramUserId
+  if (userId == null) {
+    res.status(401).json({ success: false, error: 'Unauthorized' })
+    return
+  }
+  const period = parsePeriod((req.body ?? {}) as { from?: unknown; to?: unknown })
+  if (!period) {
+    res.status(400).json({ success: false, error: 'Укажите период' })
+    return
+  }
+  try {
+    const { pdf, fileName } = await buildPdfForUser(userId, period.from, period.to)
+    await sendDocumentToUser({
+      userId,
+      fileName,
+      bytes: pdf,
+      caption: `Дневник ${period.from} — ${period.to}`,
+    })
+    console.log(`[api:download] sent userId=${userId} file=${fileName} bytes=${pdf.length}`)
+    res.json({ success: true, via: 'telegram', fileName })
+  } catch (error) {
+    console.error('[api:download] send failed', error)
+    const message = error instanceof Error ? error.message : 'Не удалось отправить PDF'
+    res.status(500).json({ success: false, error: message })
+  }
+})
+
 downloadRouter.post('/token', telegramAuth, (req, res) => {
   const userId = req.telegramUserId
   if (userId == null) {
     res.status(401).json({ success: false, error: 'Unauthorized' })
     return
   }
-  const body = (req.body ?? {}) as { from?: unknown; to?: unknown }
-  let from: string
-  let to: string
-  try {
-    from = assertDayKey(String(body.from ?? ''))
-    to = assertDayKey(String(body.to ?? ''))
-  } catch {
+  const period = parsePeriod((req.body ?? {}) as { from?: unknown; to?: unknown })
+  if (!period) {
     res.status(400).json({ success: false, error: 'Укажите период' })
     return
   }
-  if (from > to) {
-    res.status(400).json({ success: false, error: 'Начало периода позже конца' })
-    return
-  }
 
-  const fileName = `dnevnik-${from}_${to}.pdf`
-  const ticket = createDownloadTicket({ userId, fromDay: from, toDay: to, fileName })
-  // Short opaque id — long HMAC tokens in the URL often fail inside Telegram downloadFile.
-  const url = `${publicApiBase(req)}/api/download/file?id=${encodeURIComponent(ticket.id)}`
+  const fileName = `dnevnik-${period.from}_${period.to}.pdf`
+  const ticket = createDownloadTicket({
+    userId,
+    fromDay: period.from,
+    toDay: period.to,
+    fileName,
+  })
+  // `.pdf` in the path helps clients pick the right type; short id avoids token truncation.
+  const url = `${publicApiBase(req)}/api/download/file/${encodeURIComponent(ticket.id)}.pdf`
   console.log(`[api:download] ticket userId=${userId} file=${fileName} id=${ticket.id}`)
   res.json({ success: true, url, fileName })
 })
 
-downloadRouter.options('/file', (_req, res) => {
+downloadRouter.options('/file/:id', (_req, res) => {
   res.setHeader('Access-Control-Allow-Origin', 'https://web.telegram.org')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   res.status(204).end()
 })
 
-downloadRouter.get('/file', async (req: Request, res: Response) => {
+async function serveTicketPdf(req: Request, res: Response, rawId: string): Promise<void> {
   try {
-    const raw = req.query.id
-    const id = typeof raw === 'string' ? raw.trim() : ''
+    const id = rawId.replace(/\.pdf$/i, '').trim()
     const ticket = id ? getDownloadTicket(id) : null
     if (!ticket) {
       console.warn(`[api:download] missing/expired ticket id=${id || '(empty)'}`)
@@ -76,21 +119,21 @@ downloadRouter.get('/file', async (req: Request, res: Response) => {
       return
     }
 
-    const readings = listReadingsBetween(ticket.userId, ticket.fromDay, ticket.toDay)
-    const bounds = getOrCreateSettings(ticket.userId)
-    const pdf = await buildDiaryPdf({
-      readings,
-      bounds,
-      from: ticket.fromDay,
-      to: ticket.toDay,
-    })
-    console.log(
-      `[api:download] file userId=${ticket.userId} file=${ticket.fileName} bytes=${pdf.length}`,
-    )
-    setPdfHeaders(res, ticket.fileName, pdf.length)
+    const { pdf, fileName } = await buildPdfForUser(ticket.userId, ticket.fromDay, ticket.toDay)
+    console.log(`[api:download] file userId=${ticket.userId} file=${fileName} bytes=${pdf.length}`)
+    setPdfHeaders(res, ticket.fileName || fileName, pdf.length)
     res.end(pdf)
   } catch (error) {
     console.error('[api:download] file failed', error)
     res.status(500).type('text/plain').send('Internal server error')
   }
+}
+
+downloadRouter.get('/file/:id', async (req, res) => {
+  await serveTicketPdf(req, res, String(req.params.id ?? ''))
+})
+
+downloadRouter.get('/file', async (req, res) => {
+  const raw = req.query.id
+  await serveTicketPdf(req, res, typeof raw === 'string' ? raw : '')
 })

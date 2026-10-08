@@ -80,12 +80,31 @@ function isDrop(error: unknown): boolean {
 }
 
 async function pull(): Promise<void> {
-  const [listed, settings] = await Promise.all([listReadings(), getSettings()])
+  let [listed, settings] = await Promise.all([listReadings(), getSettings()])
   const pending = await db.pendingOps.toArray()
   const upsertIds = pending.filter((item) => item.kind === 'upsert-reading').map((item) => item.entityId)
   const deleteIds = new Set(
     pending.filter((item) => item.kind === 'delete-reading').map((item) => item.entityId),
   )
+
+  // After a Railway redeploy without a Volume the server DB is empty. Re-seed from the
+  // device cache instead of wiping local readings on the next sync.
+  if (listed.readings.length === 0) {
+    const localAll = await db.readings.toArray()
+    const toRestore = localAll.filter((row) => !deleteIds.has(row.id))
+    if (toRestore.length > 0) {
+      for (const row of toRestore) {
+        try {
+          await upsertReading({ ...row, note: cleanNote(row.note) })
+          await clearPending('upsert-reading', row.id)
+        } catch (error) {
+          if (isOffline(error)) await replacePending('upsert-reading', row.id)
+        }
+      }
+      listed = await listReadings()
+    }
+  }
+
   const kept = upsertIds.length > 0 ? await db.readings.where('id').anyOf(upsertIds).toArray() : []
   const remote = listed.readings
     .filter((item) => !deleteIds.has(item.id) && !upsertIds.includes(item.id))
