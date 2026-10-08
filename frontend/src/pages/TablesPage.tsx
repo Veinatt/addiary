@@ -179,10 +179,13 @@ export function TablesPage() {
             </tbody>
           </table>
         ) : (
-          <table className="w-full min-w-[48rem] border-collapse text-sm">
+          <table className="w-full min-w-[48rem] border-separate border-spacing-0 text-sm">
             <thead>
-              <tr className="border-b border-border text-xs uppercase tracking-wide text-muted-foreground">
-                <th rowSpan={2} className={cn(th, thEdge, 'align-middle')}>
+              <tr className="text-xs uppercase tracking-wide text-muted-foreground">
+                <th
+                  rowSpan={2}
+                  className={cn(th, thEdge, 'align-middle border-b border-border')}
+                >
                   Дата
                 </th>
                 <th colSpan={3} className={cn(th, thEdge, 'border-b border-border/50')}>
@@ -191,17 +194,20 @@ export function TablesPage() {
                 <th colSpan={3} className={cn(th, thEdge, 'border-b border-border/50')}>
                   Вечер
                 </th>
-                <th rowSpan={2} className={cn(th, 'align-middle text-center')}>
+                <th
+                  rowSpan={2}
+                  className={cn(th, 'align-middle border-b border-border text-center')}
+                >
                   Примечания
                 </th>
               </tr>
-              <tr className="border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-                <th className={cn(th, thEdge)}>АД</th>
-                <th className={cn(th, thEdge)}>ПД</th>
-                <th className={cn(th, thEdge)}>Пульс</th>
-                <th className={cn(th, thEdge)}>АД</th>
-                <th className={cn(th, thEdge)}>ПД</th>
-                <th className={cn(th, thEdge)}>Пульс</th>
+              <tr className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                <th className={cn(th, thEdge, 'border-b border-border')}>АД</th>
+                <th className={cn(th, thEdge, 'border-b border-border')}>ПД</th>
+                <th className={cn(th, thEdge, 'border-b border-border')}>Пульс</th>
+                <th className={cn(th, thEdge, 'border-b border-border')}>АД</th>
+                <th className={cn(th, thEdge, 'border-b border-border')}>ПД</th>
+                <th className={cn(th, thEdge, 'border-b border-border')}>Пульс</th>
               </tr>
             </thead>
             <tbody>

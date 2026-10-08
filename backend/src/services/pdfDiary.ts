@@ -241,6 +241,13 @@ export function buildDiaryPdf(options: {
     }
 
     const drawTableHead = (y: number): number => {
+      const morningX = columnX(1)
+      const eveningX = columnX(4)
+      const morningW = col(1).width + col(2).width + col(3).width
+      const eveningW = col(4).width + col(5).width + col(6).width
+      // Title band for merged «Утро»/«Вечер»; subheaders sit below.
+      const bandY = y + 18
+
       doc.save()
       doc.rect(left, y, width, HEAD_H).fill(COLORS.headerBg)
       doc.restore()
@@ -249,25 +256,21 @@ export function buildDiaryPdf(options: {
       const prevY = doc.y
       doc.font('body').fontSize(9).fillColor(COLORS.headerText)
 
-      const morningX = columnX(1)
-      const eveningX = columnX(4)
-      const morningW = col(1).width + col(2).width + col(3).width
-      const eveningW = col(4).width + col(5).width + col(6).width
       doc.text('Утро', morningX, y + 4, { width: morningW, align: 'center', lineBreak: false })
       doc.text('Вечер', eveningX, y + 4, { width: eveningW, align: 'center', lineBreak: false })
 
-      doc.text('Дата', columnX(0), y + 15, {
+      doc.text('Дата', columnX(0), y + HEAD_H / 2 - 5, {
         width: col(0).width,
         align: 'center',
         lineBreak: false,
       })
-      doc.text('Примечания', columnX(7), y + 15, {
+      doc.text('Примечания', columnX(7), y + HEAD_H / 2 - 5, {
         width: noteWidth,
         align: 'center',
         lineBreak: false,
       })
 
-      const subY = y + 26
+      const subY = y + 24
       for (const index of [1, 2, 3, 4, 5, 6]) {
         doc.text(col(index).title, columnX(index), subY, {
           width: col(index).width,
@@ -282,8 +285,7 @@ export function buildDiaryPdf(options: {
       tableTop = y
       strokeLine(left, y, left + width, y, { opacity: 0.7, width: 1 })
       strokeLine(left, y + HEAD_H, left + width, y + HEAD_H, { opacity: 0.7, width: 1 })
-      // Band under «Утро»/«Вечер» — inner АД/ПД/Пульс lines start below this.
-      const bandY = y + 18
+      // Horizontal under merged titles only — no verticals through «Утро»/«Вечер».
       strokeLine(morningX, bandY, eveningX + eveningW, bandY, { opacity: 0.35, width: 0.6 })
       drawVerticals(y, y + HEAD_H, { innerFromY: bandY })
       return y + HEAD_H
