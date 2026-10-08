@@ -1,13 +1,13 @@
-import type { Bounds } from '@/domain'
+import type { UserSettings } from '@/domain'
 import { apiFetch } from '@/api/client'
 
-export function getSettings(): Promise<{ settings: Bounds }> {
+export function getSettings(): Promise<{ settings: UserSettings }> {
   return apiFetch('/api/settings')
 }
 
-export function saveSettings(bounds: Bounds): Promise<{ settings: Bounds }> {
+export function saveSettings(settings: UserSettings): Promise<{ settings: UserSettings }> {
   return apiFetch('/api/settings', {
     method: 'PUT',
-    body: JSON.stringify(bounds),
+    body: JSON.stringify(settings),
   })
 }

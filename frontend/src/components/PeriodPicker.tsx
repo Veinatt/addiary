@@ -4,9 +4,9 @@ import { monthTitle, shiftMonth } from '@/lib/dates'
 import type { PeriodMode, PeriodValue } from '@/lib/period'
 
 const MODES: Array<{ value: PeriodMode; label: string }> = [
-  { value: 'all', label: 'Год' },
-  { value: 'month', label: 'Месяц' },
   { value: 'day', label: 'День' },
+  { value: 'month', label: 'Месяц' },
+  { value: 'all', label: 'Год' },
   { value: 'range', label: 'Период' },
 ]
 

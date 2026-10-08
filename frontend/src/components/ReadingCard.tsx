@@ -12,16 +12,23 @@ function tone(zone: 'low' | 'high' | 'normal'): string {
 type Props = {
   reading: Reading
   bounds: Bounds
+  slotLabel?: string
   onEdit: (reading: Reading) => void
   onDelete: (reading: Reading) => void
 }
 
-export function ReadingCard({ reading, bounds, onEdit, onDelete }: Props) {
+export function ReadingCard({ reading, bounds, slotLabel, onEdit, onDelete }: Props) {
   const note = cleanNote(reading.note)
   return (
     <div className="surface-panel flex w-full min-w-0 items-center gap-3 px-4 py-3">
       <button type="button" className="min-w-0 flex-1 overflow-hidden text-left" onClick={() => onEdit(reading)}>
         <p className="text-sm font-medium tabular-nums">
+          {slotLabel ? (
+            <>
+              <span className="text-primary-soft">{slotLabel}</span>
+              <span className="px-2 text-muted-foreground">·</span>
+            </>
+          ) : null}
           <span>{shortDate(reading.measuredAt)}</span>
           <span className="px-2 text-muted-foreground">·</span>
           <span>{clock(reading.measuredAt)}</span>

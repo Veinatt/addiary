@@ -15,6 +15,9 @@ export const DEFAULT_BOUNDS: Bounds = {
   pulseMax: 100,
 }
 
+export const DEFAULT_MORNING_START = '03:00'
+export const DEFAULT_MORNING_END = '15:00'
+
 export type Bounds = {
   sysMin: number
   sysMax: number
@@ -23,6 +26,19 @@ export type Bounds = {
   pulseMin: number
   pulseMax: number
 }
+
+export type UserSettings = Bounds & {
+  morningStart: string
+  morningEnd: string
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  ...DEFAULT_BOUNDS,
+  morningStart: DEFAULT_MORNING_START,
+  morningEnd: DEFAULT_MORNING_END,
+}
+
+export type DaySlot = 'morning' | 'evening'
 
 export type Reading = {
   id: string
@@ -173,7 +189,15 @@ export function parseReadingInput(body: unknown): ReadingInput {
   }
 }
 
-export function parseBounds(body: unknown): Bounds {
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
+
+export function validateMorningWindow(start: string, end: string): string | null {
+  if (!TIME_RE.test(start) || !TIME_RE.test(end)) return 'Укажите время утра в формате ЧЧ:ММ'
+  if (start === end) return 'Начало и конец утра не должны совпадать'
+  return null
+}
+
+export function parseUserSettings(body: unknown): UserSettings {
   if (!body || typeof body !== 'object') throw new HttpError(400, 'Некорректное тело')
   const raw = body as Record<string, unknown>
   const pick = (key: keyof Bounds): number => {
@@ -191,5 +215,22 @@ export function parseBounds(body: unknown): Bounds {
   }
   const problem = validateBounds(bounds)
   if (problem) throw new HttpError(400, problem)
-  return bounds
+
+  const morningStart =
+    typeof raw.morningStart === 'string' && raw.morningStart.trim()
+      ? raw.morningStart.trim()
+      : DEFAULT_MORNING_START
+  const morningEnd =
+    typeof raw.morningEnd === 'string' && raw.morningEnd.trim()
+      ? raw.morningEnd.trim()
+      : DEFAULT_MORNING_END
+  const windowProblem = validateMorningWindow(morningStart, morningEnd)
+  if (windowProblem) throw new HttpError(400, windowProblem)
+
+  return { ...bounds, morningStart, morningEnd }
+}
+
+/** @deprecated use parseUserSettings */
+export function parseBounds(body: unknown): Bounds {
+  return parseUserSettings(body)
 }

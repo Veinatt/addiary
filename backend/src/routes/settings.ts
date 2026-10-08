@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express'
 import { Router } from 'express'
-import { HttpError, parseBounds } from '../domain'
+import { HttpError, parseUserSettings } from '../domain'
 import { getOrCreateSettings, saveSettings } from '../db/settingsRepo'
 import { telegramAuth } from '../middleware/telegramAuth'
 
@@ -26,7 +26,7 @@ settingsRouter.put('/', (req, res) => {
   const id = userId(req, res)
   if (id == null) return
   try {
-    const settings = saveSettings(id, parseBounds(req.body))
+    const settings = saveSettings(id, parseUserSettings(req.body))
     res.json({ success: true, settings })
   } catch (error) {
     if (error instanceof HttpError) {

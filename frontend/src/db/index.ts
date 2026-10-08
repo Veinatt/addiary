@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Bounds, Reading } from '@/domain'
+import type { Reading, UserSettings } from '@/domain'
 
 export type PendingKind = 'upsert-reading' | 'delete-reading' | 'save-settings'
 
@@ -12,7 +12,8 @@ export type PendingOp = {
 
 export type SettingsRow = {
   id: 'local'
-  bounds: Bounds
+  /** Full user settings (bounds + morning window). */
+  bounds: UserSettings
 }
 
 class DnevnikDB extends Dexie {

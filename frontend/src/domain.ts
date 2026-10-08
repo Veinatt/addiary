@@ -15,6 +15,9 @@ export const DEFAULT_BOUNDS: Bounds = {
   pulseMax: 100,
 }
 
+export const DEFAULT_MORNING_START = '03:00'
+export const DEFAULT_MORNING_END = '15:00'
+
 export type Bounds = {
   sysMin: number
   sysMax: number
@@ -22,6 +25,27 @@ export type Bounds = {
   diaMax: number
   pulseMin: number
   pulseMax: number
+}
+
+export type UserSettings = Bounds & {
+  morningStart: string
+  morningEnd: string
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  ...DEFAULT_BOUNDS,
+  morningStart: DEFAULT_MORNING_START,
+  morningEnd: DEFAULT_MORNING_END,
+}
+
+export type DaySlot = 'morning' | 'evening'
+
+const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/
+
+export function validateMorningWindow(start: string, end: string): string | null {
+  if (!TIME_RE.test(start) || !TIME_RE.test(end)) return 'Укажите время утра в формате ЧЧ:ММ'
+  if (start === end) return 'Начало и конец утра не должны совпадать'
+  return null
 }
 
 export type Reading = {

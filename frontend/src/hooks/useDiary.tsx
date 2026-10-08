@@ -14,11 +14,12 @@ import { getSettings, saveSettings as apiSaveSettings } from '@/api/settings'
 import { db, type PendingKind } from '@/db'
 import {
   cleanNote,
-  DEFAULT_BOUNDS,
+  DEFAULT_SETTINGS,
   validateBounds,
+  validateMorningWindow,
   validateReadingValues,
-  type Bounds,
   type Reading,
+  type UserSettings,
 } from '@/domain'
 import { minskDateTimeToIso } from '@/lib/dates'
 
@@ -35,14 +36,25 @@ export type ReadingDraft = {
 
 export type SyncStatus = { text: string; tone: 'error' | 'info' } | null
 
+function mergeSettings(raw: Partial<UserSettings> | undefined): UserSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...raw,
+    morningStart: raw?.morningStart?.trim() || DEFAULT_SETTINGS.morningStart,
+    morningEnd: raw?.morningEnd?.trim() || DEFAULT_SETTINGS.morningEnd,
+  }
+}
+
 type DiaryValue = {
   readings: Reading[]
-  bounds: Bounds
+  settings: UserSettings
+  /** @deprecated use settings — kept for charts that only need bounds */
+  bounds: UserSettings
   status: SyncStatus
   refresh: () => Promise<void>
   saveReading: (draft: ReadingDraft) => Promise<void>
   deleteReading: (id: string) => Promise<void>
-  saveBounds: (bounds: Bounds) => Promise<void>
+  saveSettings: (settings: UserSettings) => Promise<void>
 }
 
 const DiaryContext = createContext<DiaryValue | null>(null)
@@ -124,7 +136,7 @@ async function pull(): Promise<void> {
     await db.readings.clear()
     if (remote.length + kept.length > 0) await db.readings.bulkPut([...remote, ...kept])
     if (!pending.some((item) => item.kind === 'save-settings')) {
-      await db.settings.put({ id: 'local', bounds: settings.settings })
+      await db.settings.put({ id: 'local', bounds: mergeSettings(settings.settings) })
     }
   })
   for (const row of broken) {
@@ -147,7 +159,7 @@ async function replay(): Promise<void> {
         await apiDelete(op.entityId)
       } else {
         const row = await db.settings.get('local')
-        if (row) await apiSaveSettings(row.bounds)
+        if (row) await apiSaveSettings(mergeSettings(row.bounds))
       }
       await db.pendingOps.delete(op.id)
     } catch (error) {
@@ -248,39 +260,43 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const saveBounds = useCallback(async (bounds: Bounds) => {
-    const problem = validateBounds(bounds)
+  const saveSettings = useCallback(async (next: UserSettings) => {
+    const problem = validateBounds(next) ?? validateMorningWindow(next.morningStart, next.morningEnd)
     if (problem) throw new Error(problem)
+    const merged = mergeSettings(next)
     const previous = await db.settings.get('local')
-    await db.settings.put({ id: 'local', bounds })
+    await db.settings.put({ id: 'local', bounds: merged })
     try {
-      const saved = await apiSaveSettings(bounds)
-      await db.settings.put({ id: 'local', bounds: saved.settings })
+      const saved = await apiSaveSettings(merged)
+      await db.settings.put({ id: 'local', bounds: mergeSettings(saved.settings) })
       await clearPending('save-settings', 'local')
       setStatus(null)
     } catch (error) {
       if (isOffline(error)) {
         await replacePending('save-settings', 'local')
-        setStatus({ text: 'Нет связи. Границы отправятся позже.', tone: 'info' })
+        setStatus({ text: 'Нет связи. Настройки отправятся позже.', tone: 'info' })
         return
       }
       if (previous) await db.settings.put(previous)
       else await db.settings.delete('local')
-      throw error instanceof Error ? error : new Error('Не удалось сохранить границы')
+      throw error instanceof Error ? error : new Error('Не удалось сохранить настройки')
     }
   }, [])
+
+  const resolvedSettings = mergeSettings(settingsRow?.bounds)
 
   const value = useMemo<DiaryValue>(
     () => ({
       readings: readings ?? [],
-      bounds: settingsRow?.bounds ?? DEFAULT_BOUNDS,
+      settings: resolvedSettings,
+      bounds: resolvedSettings,
       status,
       refresh,
       saveReading,
       deleteReading,
-      saveBounds,
+      saveSettings,
     }),
-    [readings, settingsRow, status, refresh, saveReading, deleteReading, saveBounds],
+    [readings, resolvedSettings, status, refresh, saveReading, deleteReading, saveSettings],
   )
 
   return <DiaryContext.Provider value={value}>{children}</DiaryContext.Provider>

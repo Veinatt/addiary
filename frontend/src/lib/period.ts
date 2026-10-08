@@ -16,7 +16,7 @@ export function initialPeriod(): PeriodValue {
   const today = todayKey()
   const [year, month] = today.split('-').map(Number)
   return {
-    mode: 'all',
+    mode: 'day',
     year: year ?? 2026,
     month: month ?? 1,
     day: today,

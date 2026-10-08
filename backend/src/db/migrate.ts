@@ -1,5 +1,10 @@
 import type Database from 'better-sqlite3'
 
+function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  const rows = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  return rows.some((row) => row.name === column)
+}
+
 export function runMigrations(db: Database.Database): void {
   db.exec(`
     CREATE TABLE IF NOT EXISTS readings (
@@ -39,4 +44,11 @@ export function runMigrations(db: Database.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_download_tickets_exp ON download_tickets(exp);
   `)
+
+  if (!hasColumn(db, 'user_settings', 'morningStart')) {
+    db.exec(`ALTER TABLE user_settings ADD COLUMN morningStart TEXT NOT NULL DEFAULT '03:00'`)
+  }
+  if (!hasColumn(db, 'user_settings', 'morningEnd')) {
+    db.exec(`ALTER TABLE user_settings ADD COLUMN morningEnd TEXT NOT NULL DEFAULT '15:00'`)
+  }
 }

@@ -8,6 +8,7 @@ import { ReadingCard } from '@/components/ReadingCard'
 import { ConfirmDelete, ReadingDialog } from '@/components/ReadingDialog'
 import { useDiary } from '@/hooks/useDiary'
 import { dayTitle, monthTitle, shiftMonth } from '@/lib/dates'
+import { slotForReading, slotLabel } from '@/lib/daySlots'
 import { initialPeriod, readingsInPeriod, type PeriodValue } from '@/lib/period'
 import { applyFilter, chartModel, groupReadings, summarize, type ListFilter } from '@/lib/stats'
 
@@ -29,7 +30,7 @@ function Metric({ label, value, hint }: { label: string; value: string; hint?: s
 }
 
 export function StatsPage() {
-  const { readings, bounds, deleteReading } = useDiary()
+  const { readings, bounds, settings, deleteReading } = useDiary()
   const [period, setPeriod] = useState<PeriodValue>(() => initialPeriod())
   const [filter, setFilter] = useState<ListFilter>('all')
   const [editing, setEditing] = useState<Reading | null>(null)
@@ -128,6 +129,7 @@ export function StatsPage() {
                       <ReadingCard
                         reading={item}
                         bounds={bounds}
+                        slotLabel={slotLabel(slotForReading(item, settings))}
                         onEdit={setEditing}
                         onDelete={setPendingDelete}
                       />
