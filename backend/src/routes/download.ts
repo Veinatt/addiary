@@ -17,6 +17,14 @@ function publicApiBase(req: Request): string {
   return `${proto}://${host}`
 }
 
+function setPdfHeaders(res: Response, fileName: string, byteLength: number): void {
+  res.setHeader('Content-Type', 'application/pdf')
+  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
+  res.setHeader('Content-Length', String(byteLength))
+  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
+  res.setHeader('Cache-Control', 'no-store')
+}
+
 downloadRouter.post('/token', telegramAuth, (req, res) => {
   const userId = req.telegramUserId
   if (userId == null) {
@@ -39,24 +47,28 @@ downloadRouter.post('/token', telegramAuth, (req, res) => {
   }
   const token = createDownloadToken({ userId, from, to })
   const fileName = `dnevnik-${from}_${to}.pdf`
-  const url = `${publicApiBase(req)}/api/download/${encodeURIComponent(token)}`
+  // Query string (same as NasTask) — path tokens with `.` often break Telegram downloadFile.
+  const url = `${publicApiBase(req)}/api/download/file?token=${encodeURIComponent(token)}`
   res.json({ success: true, url, fileName })
 })
 
-downloadRouter.get('/:token', async (req: Request, res: Response) => {
-  const tokenParam = req.params.token
-  const token = Array.isArray(tokenParam) ? tokenParam[0] : tokenParam
-  const payload = verifyDownloadToken(token ?? '')
-  if (!payload) {
-    res.status(401).json({ success: false, error: 'Ссылка устарела' })
-    return
+downloadRouter.get('/file', async (req: Request, res: Response) => {
+  try {
+    const raw = req.query.token
+    const token = typeof raw === 'string' ? raw : ''
+    const payload = verifyDownloadToken(token)
+    if (!payload) {
+      res.status(401).json({ success: false, error: 'Ссылка устарела' })
+      return
+    }
+    const readings = listReadingsBetween(payload.userId, payload.from, payload.to)
+    const bounds = getOrCreateSettings(payload.userId)
+    const pdf = await buildDiaryPdf({ readings, bounds, from: payload.from, to: payload.to })
+    const fileName = `dnevnik-${payload.from}_${payload.to}.pdf`
+    setPdfHeaders(res, fileName, pdf.length)
+    res.end(pdf)
+  } catch (error) {
+    console.error('[api:download] file failed', error)
+    res.status(500).json({ success: false, error: 'Internal server error' })
   }
-  const readings = listReadingsBetween(payload.userId, payload.from, payload.to)
-  const bounds = getOrCreateSettings(payload.userId)
-  const pdf = await buildDiaryPdf({ readings, bounds, from: payload.from, to: payload.to })
-  const fileName = `dnevnik-${payload.from}_${payload.to}.pdf`
-  res.setHeader('Content-Type', 'application/pdf')
-  res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`)
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
-  res.send(pdf)
 })
