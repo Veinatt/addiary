@@ -86,8 +86,12 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     }
   }
   if (!response.ok) {
-    const message =
+    const rawMessage =
       data && typeof data === 'object' && typeof data.error === 'string' ? data.error : 'Ошибка сервера'
+    const message =
+      /initData expired|Unauthorized: initData/i.test(rawMessage)
+        ? 'Сессия Telegram устарела. Закройте дневник и откройте снова из чата с ботом.'
+        : rawMessage
     throw new ApiError(message, response.status)
   }
   return data

@@ -48,7 +48,8 @@ export const config = {
   port: Number(process.env.PORT ?? 5001),
   databasePath: resolveDatabasePath(),
   authDevBypass: envFlag('AUTH_DEV_BYPASS'),
-  initDataMaxAgeSec: Number(process.env.INIT_DATA_MAX_AGE_SEC ?? 86400),
+  // Default 7 days: Mini App can stay open in chat; 24h was cutting off elderly users overnight+.
+  initDataMaxAgeSec: Number(process.env.INIT_DATA_MAX_AGE_SEC ?? 604800),
   botToken: (process.env.BOT_TOKEN ?? '').trim(),
   publicApiUrl: (process.env.PUBLIC_API_URL ?? '').trim().replace(/\/$/, ''),
   fontPath: path.resolve(__dirname, '../assets/fonts/DejaVuSans.ttf'),

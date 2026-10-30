@@ -48,6 +48,13 @@ export function telegramAuth(req: Request, res: Response, next: NextFunction): v
     next()
   } catch (error) {
     const message = error instanceof Error ? error.message : 'invalid initData'
+    if (message.includes('initData expired')) {
+      res.status(401).json({
+        success: false,
+        error: 'Сессия Telegram устарела. Закройте дневник и откройте снова из чата с ботом.',
+      })
+      return
+    }
     res.status(401).json({ success: false, error: `Unauthorized: ${message}` })
   }
 }
